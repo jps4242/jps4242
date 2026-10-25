@@ -26,7 +26,7 @@ const jps4242 = new Developer('jps4242', {
     ],
     technologies: {
         frontend: ['Vue.js', 'Vite'],
-        backend: ['FastAPI'],
+        backend: ['FastAPI', 'Node.js'],
         data: {
             databases: ['PostgreSQL', 'Redis', 'SQLite'],
             storage: ['MinIO']
