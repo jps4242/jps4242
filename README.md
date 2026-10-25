@@ -23,7 +23,7 @@ I'm a full stack developer interested in building useful software, learning new 
 
 ## GitHub Stats
 
-![JPS's GitHub stats](https://github-readme-stats.vercel.app/api?username=jps4242&show_icons=true&theme=dark)
+![jps4242's GitHub stats](https://github-readme-stats.vercel.app/api?username=jps4242&show_icons=true&theme=dark)
 
 ## Connect
 
