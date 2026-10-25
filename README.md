@@ -44,8 +44,6 @@ hello@jps4242:~ $ node ./developer.js
 Hi 👋, I'm jps4242, a passionate full-stack developer and sysadmin!
 ```
 
-I'm a full stack developer interested in building useful software, learning new technologies, and solving interesting problems.
-
 ## Projects I maintain
 
 - [Seekra](https://github.com/seekra-se) – An open-source search engine (GitHub organization is a mirror)
