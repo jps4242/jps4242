@@ -8,7 +8,6 @@ from .svg import (
     create_path,
     SVGNode,
 )
-from .tokens import Color
 
 class FontTransformer:
     """
@@ -29,7 +28,7 @@ class FontTransformer:
         root_svg: bool = True,
         x: int | float | None = None,
         y: int | float | None = None,
-        color: Color | None = None,
+        color: str | None = None,
     ) -> SVGNode:
         """
         Transforms a glyph to an SVG using the font.
@@ -49,7 +48,7 @@ class FontTransformer:
                   position on a root SVG.
         :type y: int | float | None
         :param color: The color of the glyph.
-        :type color: Color
+        :type color: str | None
 
         :returns: The glyph as an SVG.
         :rtype: SVGNode
@@ -90,7 +89,7 @@ class FontTransformer:
                 create_path(
                     pen.getCommands(),
                     stroke_color='none',
-                    fill=color.value if color is not None else None,
+                    fill=color if color is not None else None,
                 )
             ],
             root=root_svg,

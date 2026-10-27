@@ -2,7 +2,7 @@ from fontTools.ttLib import TTFont
 
 from .fonts import FontTransformer
 from .svg import SVGNode, create_svg
-from .tokens import Token
+from .tokens import ColorScheme, Token
 
 __all__ = ['SVGCode']
 
@@ -25,6 +25,8 @@ class SVGCode:
                         determines the space a line needs. The height of the
                         actual characters has nothing to do with this.
     :type line_factor: int | float
+    :param color_scheme: The color scheme for the token colors.
+    :type color_scheme: ColorScheme
     """
 
     def __init__(
@@ -34,11 +36,13 @@ class SVGCode:
         *,
         line_height: int | float = _DEFAULT_LINE_HEIGHT,
         line_factor: int | float = _DEFAULT_LINE_FACTOR,
+        color_scheme: ColorScheme = 'light',
     ) -> None:
         self.lines = lines
         self.text_height = line_height
         self.line_height = line_factor
         self.font = font
+        self.color_scheme = color_scheme
 
     def _get_height(self) -> int | float:
         """
@@ -115,7 +119,11 @@ class SVGCode:
                             root_svg=False,
                             x=current_x,
                             y=current_y,
-                            color=token.color,
+                            color=(
+                                token.color.get_value(self.color_scheme)
+                                if token.color is not None
+                                else None
+                            ),
                         )
                     )
                     current_x += self._get_glyph_width(ord(character))
