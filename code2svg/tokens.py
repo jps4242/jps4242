@@ -1,7 +1,10 @@
 from dataclasses import dataclass
+from typing import get_args, Literal
 
 __all__ = [
     'Token',
+    'ColorScheme',
+    'Color'
     'colors',
     'js',
     'punctuation',
@@ -24,15 +27,42 @@ class Token:
     color: Color | None = None
 
 
+type ColorScheme = Literal['light', 'dark']
+
+
 @dataclass
 class Color:
     """
-    A class representing a token color.
+    A class representing a token color. Colors must be specified for at least
+    one color scheme.
 
-    :param value: The color value.
-    :type value: str
+    :param light: The color used for the light color scheme. Can be ``None``.
+    :type light: str | None
+    :param dark: The color used for the dark color scheme. Can be ``None``.
+    :type dark: str | None
     """
-    value: str
+
+    def __init__(self, light: str | None = None, *, dark: str | None = None):
+        if light is None and dark is None:
+            raise ValueError(
+                'Colors must be specified for at least on color scheme'
+            )
+        self.light = light
+        self.dark = dark
+
+    def get_value(self, color_scheme: ColorScheme = 'light') -> str:
+        valid_color_schemes = get_args(ColorScheme.__value__)
+        if color_scheme not in valid_color_schemes:
+            raise ValueError(
+                f'color_scheme must be one of {
+                    ", ".join(valid_color_schemes)
+                }'
+            )
+        return (
+            (self.light if self.light is not None else self.dark)
+            if color_scheme == 'light'
+            else (self.dark if self.dark is not None else self.light)
+        )
 
 
 class colors:
@@ -40,17 +70,17 @@ class colors:
     Colors for common token types.
     """
 
-    keyword = Color('#c586c0')
-    default = Color('#d4d4d4')
-    string = Color('#ce9178')
-    number = Color('#b5cea8')
-    function = Color('#dcdcaa')
-    class_or_type = Color('#4ec9b0')
-    property = Color('#9cdcfe')
-    punctuation = Color('#d4d4d4')
-    operator = Color('#d4d4d4')
-    comment = Color('#6a9955')
-    constant = Color('#569cd6')
+    keyword = Color(light='#af00db', dark='#c586c0')
+    default = Color(light='#24292f', dark='#d4d4d4')
+    string = Color(light='#a31515', dark='#ce9178')
+    number = Color(light='#098658', dark='#b5cea8')
+    function = Color(light='#795e26', dark='#dcdcaa')
+    class_or_type = Color(light='#267f99', dark='#4ec9b0')
+    property = Color(light='#0451a5', dark='#9cdcfe')
+    punctuation = Color(light='#24292f', dark='#d4d4d4')
+    operator = Color(light='#24292f', dark='#d4d4d4')
+    comment = Color(light='#008000', dark='#6a9955')
+    constant = Color(light='#0000ff', dark='#569cd6')
 
 
 class js:
