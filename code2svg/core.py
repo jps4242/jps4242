@@ -1,8 +1,8 @@
 from fontTools.ttLib import TTFont
 
 from .fonts import FontTransformer
-from .svg import SVGNode, create_svg
-from .tokens import ColorScheme, Token
+from .svg import SVGNode, create_path, create_svg
+from .tokens import ColorScheme, colors, Token
 
 __all__ = ['SVGCode']
 
@@ -27,6 +27,8 @@ class SVGCode:
     :type line_factor: int | float
     :param color_scheme: The color scheme for the token colors.
     :type color_scheme: ColorScheme
+    :param background: Indicates a background will be added to the SVG.
+    :type background: bool
     """
 
     def __init__(
@@ -37,12 +39,14 @@ class SVGCode:
         line_height: int | float = _DEFAULT_LINE_HEIGHT,
         line_factor: int | float = _DEFAULT_LINE_FACTOR,
         color_scheme: ColorScheme = 'light',
+        background: bool = False,
     ) -> None:
         self.lines = lines
         self.text_height = line_height
         self.line_height = line_factor
         self.font = font
         self.color_scheme = color_scheme
+        self.background = background
 
     def _get_height(self) -> int | float:
         """
@@ -106,7 +110,19 @@ class SVGCode:
         :rtype: SVGNode
         """
 
+        width = self._get_width()
+        height = self._get_height()
+
         body = []
+        if self.background:
+            body.append(
+                create_path(
+                    f'M0 0h{width}v{height}h{-width}z',
+                    fill=colors.background.get_value(self.color_scheme),
+                    stroke_width=0,
+                )
+            )
+
         current_x = 0
         current_y = 0
         for line in self.lines:
@@ -129,4 +145,4 @@ class SVGCode:
                     current_x += self._get_glyph_width(ord(character))
             current_x = 0
             current_y += self.line_height * self.text_height
-        return create_svg(body, width=self._get_width(), height=self._get_height())
+        return create_svg(body, width=width, height=height)
