@@ -100,6 +100,8 @@ def create_path(
     stroke_linecap: str | None = None,
     class_: str | None = None,
     style: str | None = None,
+    visibility_delay: int | float = 0,
+    fade_in_duration: int | float | None = None,
 ) -> SVGNode:
     """
     Creates an SVG path element (``<path>``).
@@ -129,6 +131,19 @@ def create_path(
     :param style: The inline CSS (``style`` attribute). If it is ``None``, no
                   inline CSS will be set.
     :type style: str | None
+    :param visibility_delay: The delay before the path becomes visible (in
+                             seconds). If ``0``, there will be no delay. This
+                             is the default value.
+    :type visibility_delay: int | float
+    :param fade_in_duration: The duration of the fade-in animation
+                                        of the visibility (in seconds). If
+                                        ``None``, the path will be displayed
+                                        without a fade-in animation. The
+                                        animation starts when after the
+                                        visibility delay. If no
+                                        ``visibility_delay`` is set, the fade-
+                                        in animation will start immediately.
+    :type fade_in_duration: int | float | None
 
     :return: The SVG path.
     :rtype: SVGNode
@@ -148,4 +163,42 @@ def create_path(
         attributes['class'] = class_
     if style is not None:
         attributes['style'] = style
-    return SVGNode('path', attributes, None)
+
+    body = []
+    if fade_in_duration is not None:
+        attributes['opacity'] = '0'
+        # fade-in animation enabled; it does not matter whether the delay is 0
+        # or not -> `<animate>` element
+        body.append(
+            SVGNode(
+                'animate',
+                {
+                    'attributeName': 'opacity',
+                    'from': '0',
+                    'to': '1',
+                    'begin': f'{visibility_delay}s',
+                    'dur': f'{fade_in_duration}s',
+                    'fill': 'freeze',
+                },
+            )
+        )
+    elif visibility_delay != 0:
+        attributes['opacity'] = '0'
+        # no fade-in animation and a delay -> `<set>` element
+        body.append(
+            SVGNode(
+                'set',
+                {
+                    'attributeName': 'opacity',
+                    'from': '0',
+                    'to': '1',
+                    'begin': f'{visibility_delay}s',
+                    'fill': 'freeze',
+                },
+            )
+        )
+
+
+
+
+    return SVGNode('path', attributes, body if body else None)

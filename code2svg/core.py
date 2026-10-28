@@ -1,3 +1,4 @@
+from decimal import Decimal
 from fontTools.ttLib import TTFont
 
 from .fonts import FontTransformer
@@ -9,6 +10,7 @@ __all__ = ['SVGCode']
 
 _DEFAULT_LINE_HEIGHT = 16
 _DEFAULT_LINE_FACTOR = 1.2
+_DEFAULT_ANIMATION_DURATION = Decimal(0.5)
 
 
 class SVGCode:
@@ -29,6 +31,16 @@ class SVGCode:
     :type color_scheme: ColorScheme
     :param background: Indicates a background will be added to the SVG.
     :type background: bool
+    :param animation: Indicates whether the code will be animated. If it is
+                      animated, each character appears with a delay which is
+                      increased after each character. Each character fades in
+                      within 0.1 seconds.
+    :type animation: bool
+    :param animation_duration: The total duration of the animation (in
+                               seconds). ``animation_duration`` is ignored if
+                               the animation is disabled. Default is one
+                               second.
+    :type animation_duration: int | Decimal | None
     """
 
     def __init__(
@@ -40,6 +52,8 @@ class SVGCode:
         line_factor: int | float = _DEFAULT_LINE_FACTOR,
         color_scheme: ColorScheme = 'light',
         background: bool = False,
+        animation: bool = False,
+        animation_duration: int | Decimal | None = None,
     ) -> None:
         self.lines = lines
         self.text_height = line_height
@@ -47,6 +61,16 @@ class SVGCode:
         self.font = font
         self.color_scheme = color_scheme
         self.background = background
+        self.animation = animation
+        self.animation_duration = (
+            (
+                animation_duration
+                if animation_duration is not None
+                else _DEFAULT_ANIMATION_DURATION
+            )
+            if animation
+            else None
+        )
 
     def _get_height(self) -> int | float:
         """
@@ -102,6 +126,15 @@ class SVGCode:
 
         return longest_line
 
+    def __str__(self) -> int:
+        return '\n'.join(
+            ''.join(
+                token.text
+                for token in line
+            )
+            for line in self.lines
+        )
+
     def render(self) -> SVGNode:
         """
         Renders the code and returns it as an SVG.
@@ -125,6 +158,16 @@ class SVGCode:
 
         current_x = 0
         current_y = 0
+        current_delay = Decimal(0)
+
+        if self.animation:
+            delay_step = (
+                self.animation_duration
+                / (Decimal(len(str(self))) - 1)
+            )
+        else:
+            delay_step = 0
+
         for line in self.lines:
             for token in line:
                 for character in token.text:
@@ -140,9 +183,11 @@ class SVGCode:
                                 if token.color is not None
                                 else None
                             ),
+                            visibility_delay=current_delay,
                         )
                     )
                     current_x += self._get_glyph_width(ord(character))
+                    current_delay += delay_step
             current_x = 0
             current_y += self.line_height * self.text_height
         return create_svg(body, width=width, height=height)

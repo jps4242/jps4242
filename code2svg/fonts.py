@@ -29,6 +29,7 @@ class FontTransformer:
         x: int | float | None = None,
         y: int | float | None = None,
         color: str | None = None,
+        visibility_delay: int | float = 0,
     ) -> SVGNode:
         """
         Transforms a glyph to an SVG using the font.
@@ -49,6 +50,9 @@ class FontTransformer:
         :type y: int | float | None
         :param color: The color of the glyph.
         :type color: str | None
+        :param visibility_delay: The delay before the path becomes visible (in
+                                 seconds).
+        :type visibility_delay: int | float
 
         :returns: The glyph as an SVG.
         :rtype: SVGNode
@@ -90,6 +94,8 @@ class FontTransformer:
                     pen.getCommands(),
                     stroke_color='none',
                     fill=color if color is not None else None,
+                    visibility_delay=visibility_delay,
+                    fade_in_duration=0.1 if visibility_delay else None,
                 )
             ],
             root=root_svg,
