@@ -82,6 +82,8 @@ class colors:
     comment = Color(light='#008000', dark='#6a9955')
     constant = Color(light='#0000ff', dark='#569cd6')
 
+    background = Color(light='#fafafa', dark='#1e1e1e')
+
 
 class js:
     """
