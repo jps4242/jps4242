@@ -41,6 +41,8 @@ class SVGCode:
                                the animation is disabled. Default is one
                                second.
     :type animation_duration: int | Decimal | None
+    :param line_numbers: Indicates whether line numbers will be displayed.
+    :type line_numbers: bool
     """
 
     def __init__(
@@ -54,6 +56,7 @@ class SVGCode:
         background: bool = False,
         animation: bool = False,
         animation_duration: int | Decimal | None = None,
+        line_numbers: bool = True,
     ) -> None:
         self.lines = lines
         self.line_height = line_height
@@ -71,6 +74,7 @@ class SVGCode:
             if animation
             else None
         )
+        self.line_numbers = line_numbers
 
     def _get_height(self) -> int | float:
         """
@@ -168,7 +172,24 @@ class SVGCode:
         else:
             delay_step = 0
 
-        for line in self.lines:
+        line_index_digits = len(str(len(self.lines)))
+
+        for line_index, line in enumerate(self.lines):
+            if self.line_numbers:
+                for line_digit in str(line_index + 1).rjust(line_index_digits):
+                    body.append(
+                        FontTransformer(self.font).transform_glyph_to_svg(
+                            ord(line_digit),
+                            self.line_height,
+                            root_svg=False,
+                            x=current_x,
+                            y=current_y,
+                            color=colors.line_numbers.get_value(self.color_scheme),
+                        )
+                    )
+                    current_x += self._get_glyph_width(ord(line_digit))
+                current_x += 2 * self._get_glyph_width(32)
+
             for token in line:
                 for character in token.text:
                     body.append(
