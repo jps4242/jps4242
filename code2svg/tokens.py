@@ -84,6 +84,8 @@ class colors:
 
     background = Color(light='#fafafa', dark='#1e1e1e')
 
+    line_numbers = Color(light='#6e6e6e', dark='#858585')
+
 
 class js:
     """
