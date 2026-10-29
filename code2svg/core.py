@@ -43,6 +43,11 @@ class SVGCode:
     :type animation_duration: int | Decimal | None
     :param line_numbers: Indicates whether line numbers will be displayed.
     :type line_numbers: bool
+    :param animate_line_numbers: Indicates whether the line numbers will be
+                                 part of the animation.
+                                 ``animate_line_numbers`` is ignored if the
+                                 animation and/or line numbers are disabled.
+    :type animate_line_numbers: bool
     """
 
     def __init__(
@@ -57,6 +62,7 @@ class SVGCode:
         animation: bool = False,
         animation_duration: int | Decimal | None = None,
         line_numbers: bool = True,
+        animate_line_numers: bool = False,
     ) -> None:
         self.lines = lines
         self.line_height = line_height
@@ -75,6 +81,7 @@ class SVGCode:
             else None
         )
         self.line_numbers = line_numbers
+        self.animate_line_numers = animate_line_numers
 
     def _get_height(self) -> int | float:
         """
@@ -147,36 +154,33 @@ class SVGCode:
         :rtype: SVGNode
         """
 
-        width = self._get_width()
-        height = self._get_height()
-
         body = []
-        if self.background:
-            body.append(
-                create_path(
-                    f'M0 0h{width}v{height}h{-width}z',
-                    fill=colors.background.get_value(self.color_scheme),
-                    stroke_width=0,
-                )
-            )
 
         current_x = 0
         current_y = 0
         current_delay = Decimal(0)
 
+        line_index_digits = len(str(len(self.lines)))
+        widest_line_number = 0
+
+        characters_count = len(str(self))
+        if self.line_numbers:
+            characters_count += line_index_digits * len(self.lines)
         if self.animation:
             delay_step = (
                 self.animation_duration
-                / (Decimal(len(str(self))) - 1)
+                / (Decimal(characters_count) - 1)
             )
         else:
             delay_step = 0
 
-        line_index_digits = len(str(len(self.lines)))
-
         for line_index, line in enumerate(self.lines):
             if self.line_numbers:
-                for line_digit in str(line_index + 1).rjust(line_index_digits):
+                line_number = str(line_index + 1).rjust(line_index_digits)
+                for line_digit in line_number:
+                    visibility_delay = 0
+                    if self.animate_line_numers:
+                        visibility_delay = current_delay
                     body.append(
                         FontTransformer(self.font).transform_glyph_to_svg(
                             ord(line_digit),
@@ -185,10 +189,20 @@ class SVGCode:
                             x=current_x,
                             y=current_y,
                             color=colors.line_numbers.get_value(self.color_scheme),
+                            visibility_delay=visibility_delay
                         )
                     )
                     current_x += self._get_glyph_width(ord(line_digit))
-                current_x += 2 * self._get_glyph_width(32)
+                    if self.animate_line_numers:
+                        current_delay += delay_step
+                space = 2 * self._get_glyph_width(32)
+                current_x += space
+                line_number_width = sum(
+                    self._get_glyph_width(ord(character))
+                    for character in line_number
+                ) + space
+                if line_number_width > widest_line_number:
+                    widest_line_number = line_number_width
 
             for token in line:
                 for character in token.text:
@@ -211,4 +225,18 @@ class SVGCode:
                     current_delay += delay_step
             current_x = 0
             current_y += self.line_factor * self.line_height
+
+        width = self._get_width() + widest_line_number
+        height = self._get_height()
+
+        if self.background:
+            body.insert(
+                0,
+                create_path(
+                    f'M0 0h{width}v{height}h{-width}z',
+                    fill=colors.background.get_value(self.color_scheme),
+                    stroke_width=0,
+                )
+            )
+
         return create_svg(body, width=width, height=height)
