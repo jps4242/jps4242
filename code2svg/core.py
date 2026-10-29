@@ -56,8 +56,8 @@ class SVGCode:
         animation_duration: int | Decimal | None = None,
     ) -> None:
         self.lines = lines
-        self.text_height = line_height
-        self.line_height = line_factor
+        self.line_height = line_height
+        self.line_factor = line_factor
         self.font = font
         self.color_scheme = color_scheme
         self.background = background
@@ -80,7 +80,7 @@ class SVGCode:
         :rtype: int | float
         """
 
-        return self.line_height * self.text_height * len(self.lines)
+        return self.line_factor * self.line_height * len(self.lines)
 
     def _get_glyph_width(self, character: int) -> float:
         """
@@ -97,7 +97,7 @@ class SVGCode:
 
         hhea = self.font['hhea']
         natural_line_height = hhea.ascent - hhea.descent + hhea.lineGap
-        scale = self.text_height / natural_line_height
+        scale = self.line_height / natural_line_height
 
         advance_width, _ = self.font['hmtx'][glyph_name]
         return advance_width * scale
@@ -174,7 +174,7 @@ class SVGCode:
                     body.append(
                         FontTransformer(self.font).transform_glyph_to_svg(
                             ord(character),
-                            self.text_height,
+                            self.line_height,
                             root_svg=False,
                             x=current_x,
                             y=current_y,
@@ -189,5 +189,5 @@ class SVGCode:
                     current_x += self._get_glyph_width(ord(character))
                     current_delay += delay_step
             current_x = 0
-            current_y += self.line_height * self.text_height
+            current_y += self.line_factor * self.line_height
         return create_svg(body, width=width, height=height)
