@@ -98,6 +98,7 @@ class js:
     new = Token('new', colors.keyword)
     ternary_colon = Token(':', colors.operator)
     ternary_question_mark = Token('?', colors.operator)
+    backtick = Token('`', colors.string)
 
 
 class punctuation:
@@ -114,7 +115,6 @@ class punctuation:
     comma = Token(',', colors.punctuation)
     dot = Token('.', colors.punctuation)
     semicolon = Token(';', colors.punctuation)
-    backtick = Token('`', colors.punctuation)
     single_quote = Token("'", colors.string)
     double_quote = Token('"', colors.string)
     colon = Token(':', colors.punctuation)
