@@ -46,6 +46,10 @@ class SVGCodeArea:
                             ``animation_delay`` is ignored if the animation is
                             disabled.
     :type animation_delay: Decimal | None
+    :param padding_top: The padding which will be inserted at the bottom.
+    :type padding_top: int | float
+    :param padding_bottom: The padding which will be inserted at the bottom.
+    :type padding_bottom: int | float
     """
 
     def __init__(
@@ -58,6 +62,8 @@ class SVGCodeArea:
         line_numbers: bool = True,
         animate_line_numers: bool = False,
         animation_delay: Decimal | None = None,
+        padding_top: int | float = 0,
+        padding_bottom: int | float = 0,
     ) -> None:
         self.lines = lines
         self.background = (
@@ -90,6 +96,8 @@ class SVGCodeArea:
             if animation
             else None
         )
+        self.padding_top = padding_top
+        self.padding_bottom = padding_bottom
 
     def __str__(self) -> int:
         return '\n'.join(
@@ -304,6 +312,8 @@ class SVGCode:
         max_width = 0
 
         for area in self.areas:
+            current_y += area.padding_top
+
             line_index_digits = len(str(len(area.lines)))
             widest_line_number = 0
 
@@ -423,11 +433,23 @@ class SVGCode:
             width = self._get_width() + widest_line_number
             if width > max_width:
                 max_width = width
-            height = self.line_height * self.line_factor * len(area.lines)
+            height = (
+                self.line_height
+                * self.line_factor
+                * len(area.lines)
+                + area.padding_bottom
+            )
+            current_y += area.padding_bottom
 
         current_y = 0
         for area in self.areas:
-            height = self.line_height * self.line_factor * len(area.lines)
+            height = (
+                self.line_height
+                * self.line_factor
+                * len(area.lines)
+                + area.padding_top
+                + area.padding_bottom
+            )
             if area.background is not None:
                 body.insert(
                     0,
@@ -439,4 +461,12 @@ class SVGCode:
                 )
             current_y += height
 
-        return create_svg(body, width=width, height=self._get_height())
+        return create_svg(
+            body,
+            width=width,
+            height=(
+                self._get_height()
+                + sum(area.padding_top for area in self.areas)
+                + sum(area.padding_bottom for area in self.areas)
+            ),
+        )
