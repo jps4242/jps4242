@@ -4,7 +4,7 @@ from fontTools.ttLib import TTFont
 
 from .fonts import FontConverter
 from .svg import SVGNode, create_path, create_style, create_svg, create_use
-from .tokens import ColorScheme, colors, Token
+from .tokens import Color, ColorScheme, colors, Token
 
 __all__ = ['SVGCode']
 
@@ -20,8 +20,11 @@ class SVGCodeArea:
 
     :param lines: A list of the code lines. Each line is a list of tokens.
     :type lines: list[list[Token]]
-    :param background: Indicates a background will be added to the SVG.
-    :type background: bool
+    :param background: The background that will be added to the SVG. If
+                       ``True``, the default background color will be used. If
+                       ``False``, no background will be added. This is the
+                       default value. It can also be a custom color.
+    :type background: bool | Color
     :param animation: Indicates whether the code will be animated. If it is
                       animated, each character appears with a delay which is
                       increased after each character. Each character fades in
@@ -49,7 +52,7 @@ class SVGCodeArea:
         self,
         lines: list[list[Token]],
         *,
-        background: bool = False,
+        background: bool | Color = False,
         animation: bool = False,
         animation_duration: int | Decimal | None = None,
         line_numbers: bool = True,
@@ -57,7 +60,15 @@ class SVGCodeArea:
         animation_delay: Decimal | None = None,
     ) -> None:
         self.lines = lines
-        self.background = background
+        self.background = (
+            colors.background
+            if background == True
+            else (
+                background
+                if isinstance(background, Color)
+                else None
+            )
+        )
         self.animation = animation
         self.animation_duration = (
             (
@@ -417,12 +428,12 @@ class SVGCode:
         current_y = 0
         for area in self.areas:
             height = self.line_height * self.line_factor * len(area.lines)
-            if area.background:
+            if area.background is not None:
                 body.insert(
                     0,
                     create_path(
                         f'M0 {current_y}h{max_width}v{height}h{-max_width}z',
-                        fill=colors.background.get_value(self.color_scheme),
+                        fill=area.background.get_value(self.color_scheme),
                         stroke_width=0,
                     )
                 )
