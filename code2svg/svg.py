@@ -1,6 +1,12 @@
 from dataclasses import dataclass
 
-__all__ = ['SVGNode', 'create_svg', 'create_path']
+__all__ = [
+    'SVGNode',
+    'create_svg',
+    'create_path',
+    'create_use',
+    'create_style',
+]
 
 
 @dataclass
@@ -14,12 +20,12 @@ class SVGNode:
     :type attributes: dict[str, str]
     :param body: The body of the node as a list of other SVG nodes.
                  If it is ``None``, the node will have no body.
-    :type body: list[SVGNode] | None
+    :type body: list[SVGNode | str] | None
     """
 
     tag: str
     attributes: dict[str, str]
-    body: list[SVGNode] | None = None
+    body: list[SVGNode | str] | None = None
 
     def __str__(self) -> str:
         str_repr = f'<{self.tag}'
@@ -204,3 +210,45 @@ def create_path(
 
 
     return SVGNode('path', attributes, body if body else None)
+
+
+def create_use(
+    definition: str,
+    attributes: dict[str, str] = {},
+    body: list[SVGNode] | None = None,
+) -> SVGNode:
+    """
+    Creates an SVG ``<use>`` element to reuse the definition with the
+    specified ID.
+
+    :param definition: The definition to reuse.
+    :type definition: str
+    :param attributes: The attributes that will be set on the ``<use>``
+                       element. Attributes set here override the corresponding
+                       attributes of the reused element.
+    :type attributes: dict[str, str]
+    :param body: The body of the element. If ``None``, the ``<use>`` element
+                 not have a body.
+    :type body: list[SVGNode] | None
+
+    :return: The ``<use>`` SVG element.
+    :rtype: SVGNode
+    """
+
+    attributes['href'] = definition
+
+    return SVGNode('use', attributes, body)
+
+
+def create_style(css: str) -> SVGNode:
+    """
+    Creates an SVG ``<style>`` element.
+
+    :param css: The CSS for the ``<style>`` element.
+    :type css: str
+
+    :return: The ``<style>`` SVG element.
+    :rtype: SVGNode
+    """
+
+    return SVGNode('style', {}, [css])
