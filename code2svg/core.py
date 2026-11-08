@@ -39,6 +39,10 @@ class SVGCodeArea:
                                  ``animate_line_numbers`` is ignored if the
                                  animation and/or line numbers are disabled.
     :type animate_line_numbers: bool
+    :param animation_delay: The delay before the animation starts.
+                            ``animation_delay`` is ignored if the animation is
+                            disabled.
+    :type animation_delay: Decimal | None
     """
 
     def __init__(
@@ -50,6 +54,7 @@ class SVGCodeArea:
         animation_duration: int | Decimal | None = None,
         line_numbers: bool = True,
         animate_line_numers: bool = False,
+        animation_delay: Decimal | None = None,
     ) -> None:
         self.lines = lines
         self.background = background
@@ -65,6 +70,15 @@ class SVGCodeArea:
         )
         self.line_numbers = line_numbers
         self.animate_line_numers = animate_line_numers
+        self.animation_delay = (
+            (
+                animation_delay
+                if animation_delay is not None
+                else Decimal(0)
+            )
+            if animation
+            else None
+        )
 
     def __str__(self) -> int:
         return '\n'.join(
@@ -292,7 +306,7 @@ class SVGCode:
                 )
             else:
                 delay_step = 0
-            current_delay = Decimal(0)
+            current_delay = area.animation_delay
 
             for line_index, line in enumerate(area.lines):
                 if area.line_numbers:
