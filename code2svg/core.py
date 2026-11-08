@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from decimal import Decimal
 from fontTools.ttLib import TTFont
 
@@ -13,22 +14,12 @@ _DEFAULT_LINE_FACTOR = 1.2
 _DEFAULT_ANIMATION_DURATION = Decimal(0.5)
 
 
-class SVGCode:
+class SVGCodeArea:
     """
-    SVG code generator.
+    A code area of an SVG code generator.
 
     :param lines: A list of the code lines. Each line is a list of tokens.
     :type lines: list[list[Token]]
-    :param font: The font to use.
-    :type font: TTFont
-    :param line_height: The height of the lines.
-    :type line_height: int | float
-    :param line_factor: The factor the line height is multiplied by. It
-                        determines the space a line needs. The height of the
-                        actual characters has nothing to do with this.
-    :type line_factor: int | float
-    :param color_scheme: The color scheme for the token colors.
-    :type color_scheme: ColorScheme
     :param background: Indicates a background will be added to the SVG.
     :type background: bool
     :param animation: Indicates whether the code will be animated. If it is
@@ -53,11 +44,7 @@ class SVGCode:
     def __init__(
         self,
         lines: list[list[Token]],
-        font: TTFont,
         *,
-        line_height: int | float = _DEFAULT_LINE_HEIGHT,
-        line_factor: int | float = _DEFAULT_LINE_FACTOR,
-        color_scheme: ColorScheme = 'light',
         background: bool = False,
         animation: bool = False,
         animation_duration: int | Decimal | None = None,
@@ -65,10 +52,6 @@ class SVGCode:
         animate_line_numers: bool = False,
     ) -> None:
         self.lines = lines
-        self.line_height = line_height
-        self.line_factor = line_factor
-        self.font = font
-        self.color_scheme = color_scheme
         self.background = background
         self.animation = animation
         self.animation_duration = (
@@ -83,15 +66,49 @@ class SVGCode:
         self.line_numbers = line_numbers
         self.animate_line_numers = animate_line_numers
 
-    def _get_height(self) -> int | float:
-        """
-        Returns the height of the code canvas.
+    def __str__(self) -> int:
+        return '\n'.join(
+            ''.join(
+                token.text
+                for token in line
+            )
+            for line in self.lines
+        )
 
-        :return: The height of the code canvas.
-        :rtype: int | float
-        """
 
-        return self.line_factor * self.line_height * len(self.lines)
+@dataclass
+class SVGCode:
+    """
+    An SVG code generator.
+
+    :param areas: The code areas.
+    :type areas: list[SVGCodeArea]
+    :param font: The font to use.
+    :type font: TTFont
+    :param line_height: The height of the lines.
+    :type line_height: int | float
+    :param line_factor: The factor the line height is multiplied by. It
+                        determines the space a line needs. The height of the
+                        actual characters has nothing to do with this.
+    :type line_factor: int | float
+    :param color_scheme: The color scheme for the token colors.
+    :type color_scheme: ColorScheme
+    """
+
+    def __init__(
+        self,
+        areas: list[SVGCodeArea],
+        font: TTFont,
+        *,
+        line_height: int | float = _DEFAULT_LINE_HEIGHT,
+        line_factor: int | float = _DEFAULT_LINE_FACTOR,
+        color_scheme: ColorScheme = 'light',
+    ) -> None:
+        self.areas = areas
+        self.font = font
+        self.line_height = line_height
+        self.line_factor = line_factor
+        self.color_scheme = color_scheme
 
     def _get_glyph_width(self, character: int) -> float:
         """
@@ -123,33 +140,39 @@ class SVGCode:
         """
 
         longest_line = 0
-        for line in self.lines:
-            line_length = 0
-            for token in line:
-                line_length += sum(
-                    [
-                        self._get_glyph_width(ord(character))
-                        for character in token.text
-                    ]
-                )
-            if line_length > longest_line:
-                longest_line = line_length
+        for area in self.areas:
+            for line in area.lines:
+                line_length = 0
+                for token in line:
+                    line_length += sum(
+                        [
+                            self._get_glyph_width(ord(character))
+                            for character in token.text
+                        ]
+                    )
+                if line_length > longest_line:
+                    longest_line = line_length
 
         return longest_line
 
-    def __str__(self) -> int:
-        return '\n'.join(
-            ''.join(
-                token.text
-                for token in line
-            )
-            for line in self.lines
+    def _get_height(self) -> int | float:
+        """
+        Returns the height of the code canvas.
+
+        :return: The height of the code canvas.
+        :rtype: int | float
+        """
+
+        return (
+            self.line_factor
+            * self.line_height
+            * sum(len(area.lines) for area in self.areas)
         )
 
     def create_character_map(self) -> tuple[dict[str, SVGNode], list[str]]:
         """
-        Creates a mapping of the characters of the code and their glyph as SVG
-        paths.
+        Creates a mapping of the characters of all code and their glyphs as
+        SVG paths.
 
         :return: The mapping of the characters (keys) and their glyphs as SVG
                  paths (values) and the list of characters with only one
@@ -159,34 +182,39 @@ class SVGCode:
 
         # list instead of set to preserve order
         characters_raw = []
-        for line in self.lines:
-            for token in line:
-                for character in token.text:
-                    character_with_color = (
-                        character,
-                        (
-                            token.color.get_value(self.color_scheme)
-                            if token.color is not None else None
+        for area in self.areas:
+            for line in area.lines:
+                for token in line:
+                    for character in token.text:
+                        character_with_color = (
+                            character,
+                            (
+                                token.color.get_value(self.color_scheme)
+                                if token.color is not None else None
+                            )
                         )
-                    )
-                    if character_with_color not in characters_raw:
-                        characters_raw.append(character_with_color)
+                        if character_with_color not in characters_raw:
+                            characters_raw.append(character_with_color)
 
-        # find combinations of characters and colors also for line numbers if
-        # enabled
-        if self.line_numbers:
-            # find all digits that are used
-            digits = '1234567890'
-            if len(self.lines) < 10:
-                digits = digits[:len(self.lines)]
-
-            line_numbers_color = colors.line_numbers.get_value(
-                self.color_scheme
+        # find all line number digits that are used
+        digits = '1234567890'[
+            :max(
+                (
+                    min(10, len(area.lines))
+                    for area in self.areas
+                    if area.line_numbers
+                ),
+                default=0,
             )
-            for digit in digits:
-                digit_with_color = (digit, line_numbers_color)
-                if digit_with_color not in characters_raw:
-                    characters_raw.append(digit_with_color)
+        ]
+        line_numbers_color = colors.line_numbers.get_value(
+            self.color_scheme
+        )
+        # find combinations of characters and colors also for line numbers
+        for digit in digits:
+            digit_with_color = (digit, line_numbers_color)
+            if digit_with_color not in characters_raw:
+                characters_raw.append(digit_with_color)
 
         # all characters
         characters = set(character for character, _ in characters_raw)
@@ -236,7 +264,7 @@ class SVGCode:
         body = [
             SVGNode('defs', {}, character_map.values()),
         ]
-        if self.animation:
+        if any(area.animation for area in self.areas):
             # add CSS for animations
             body.append(
                 create_style(
@@ -247,134 +275,143 @@ class SVGCode:
 
         current_x = 0
         current_y = 0
-        current_delay = Decimal(0)
 
-        line_index_digits = len(str(len(self.lines)))
-        widest_line_number = 0
+        max_width = 0
 
-        characters_count = len(str(self))
-        if self.line_numbers:
-            characters_count += line_index_digits * len(self.lines)
-        if self.animation:
-            delay_step = (
-                self.animation_duration
-                / (Decimal(characters_count) - 1)
-            )
-        else:
-            delay_step = 0
+        for area in self.areas:
+            line_index_digits = len(str(len(area.lines)))
+            widest_line_number = 0
 
-        for line_index, line in enumerate(self.lines):
-            if self.line_numbers:
-                line_number = str(line_index + 1).rjust(line_index_digits)
-                for line_digit in line_number:
-                    character_ord = ord(line_digit)
-                    glyph_width = self._get_glyph_width(character_ord)
+            characters_count = len(str(area))
+            if area.line_numbers:
+                characters_count += line_index_digits * len(area.lines)
+            if area.animation:
+                delay_step = (
+                    area.animation_duration
+                    / (Decimal(characters_count) - 1)
+                )
+            else:
+                delay_step = 0
+            current_delay = Decimal(0)
 
-                    use_attributes = {}
-                    if self.animate_line_numers and self.animation:
-                        # set attributes for line number animation
-                        use_attributes['class'] = 'c'
-                        use_attributes['style'] = (
-                            f'animation-delay:{current_delay}s'
-                        )
-                    if line_digit not in characters_with_unique_color:
-                        # set character color if it is not None
-                        color = colors.line_numbers.get_value(
-                            self.color_scheme
-                        )
-                        if color is not None:
-                            use_attributes['fill'] = (
-                                colors.line_numbers.get_value(
-                                    self.color_scheme
-                                )
+            for line_index, line in enumerate(area.lines):
+                if area.line_numbers:
+                    line_number = str(line_index + 1).rjust(line_index_digits)
+                    for line_digit in line_number:
+                        character_ord = ord(line_digit)
+                        glyph_width = self._get_glyph_width(character_ord)
+
+                        use_attributes = {}
+                        if area.animate_line_numers and area.animation:
+                            # set attributes for line number animation
+                            use_attributes['class'] = 'c'
+                            use_attributes['style'] = (
+                                f'animation-delay:{current_delay}s'
                             )
-
-                    body.append(
-                        create_svg(
-                            [
-                                # reference to the character path definition
-                                create_use(
-                                    f'#c{character_ord}',
-                                    use_attributes,
+                        if line_digit not in characters_with_unique_color:
+                            # set character color if it is not None
+                            color = colors.line_numbers.get_value(
+                                self.color_scheme
+                            )
+                            if color is not None:
+                                use_attributes['fill'] = (
+                                    colors.line_numbers.get_value(
+                                        self.color_scheme
+                                    )
                                 )
-                            ],
-                            root=False,
-                            width=glyph_width,
-                            height=self.line_height,
-                            view_box=f'0 0 {glyph_width} {self.line_height}',
-                            x=current_x,
-                            y=current_y,
-                        )
-                    )
-                    current_x += self._get_glyph_width(character_ord)
-                    if self.animate_line_numers:
-                        current_delay += delay_step
-                space = 2 * self._get_glyph_width(32)
-                current_x += space
-                line_number_width = sum(
-                    self._get_glyph_width(ord(character))
-                    for character in line_number
-                ) + space
-                if line_number_width > widest_line_number:
-                    widest_line_number = line_number_width
 
-            for token in line:
-                for character in token.text:
-                    character_ord = ord(character)
-                    glyph_width = self._get_glyph_width(character_ord)
+                        body.append(
+                            create_svg(
+                                [
+                                    # reference to the character path definition
+                                    create_use(
+                                        f'#c{character_ord}',
+                                        use_attributes,
+                                    )
+                                ],
+                                root=False,
+                                width=glyph_width,
+                                height=self.line_height,
+                                view_box=f'0 0 {glyph_width} {self.line_height}',
+                                x=current_x,
+                                y=current_y,
+                            )
+                        )
+                        current_x += self._get_glyph_width(character_ord)
+                        if area.animate_line_numers:
+                            current_delay += delay_step
+                    space = 2 * self._get_glyph_width(32)
+                    current_x += space
+                    line_number_width = sum(
+                        self._get_glyph_width(ord(character))
+                        for character in line_number
+                    ) + space
+                    if line_number_width > widest_line_number:
+                        widest_line_number = line_number_width
 
-                    use_attributes = {}
-                    if self.animation:
-                        # set attributes for animation
-                        use_attributes['class'] = 'c'
-                        use_attributes['style'] = (
-                            f'animation-delay:{current_delay}s'
-                        )
-                    if character not in characters_with_unique_color:
-                        # set character color if it is not None
-                        color = (
-                            token.color.get_value(self.color_scheme)
-                            if token.color is not None else None
-                        )
-                        if color is not None:
-                            use_attributes['fill'] = (
+                for token in line:
+                    for character in token.text:
+                        character_ord = ord(character)
+                        glyph_width = self._get_glyph_width(character_ord)
+
+                        use_attributes = {}
+                        if area.animation:
+                            # set attributes for animation
+                            use_attributes['class'] = 'c'
+                            use_attributes['style'] = (
+                                f'animation-delay:{current_delay}s'
+                            )
+                        if character not in characters_with_unique_color:
+                            # set character color if it is not None
+                            color = (
                                 token.color.get_value(self.color_scheme)
                                 if token.color is not None else None
                             )
-
-                    body.append(
-                        create_svg(
-                            [
-                                # reference to the character path definition
-                                create_use(
-                                    f'#c{character_ord}',
-                                    use_attributes,
+                            if color is not None:
+                                use_attributes['fill'] = (
+                                    token.color.get_value(self.color_scheme)
+                                    if token.color is not None else None
                                 )
-                            ],
-                            root=False,
-                            width=glyph_width,
-                            height=self.line_height,
-                            view_box=f'0 0 {glyph_width} {self.line_height}',
-                            x=current_x,
-                            y=current_y,
+
+                        body.append(
+                            create_svg(
+                                [
+                                    # reference to the character path definition
+                                    create_use(
+                                        f'#c{character_ord}',
+                                        use_attributes,
+                                    )
+                                ],
+                                root=False,
+                                width=glyph_width,
+                                height=self.line_height,
+                                view_box=f'0 0 {glyph_width} {self.line_height}',
+                                x=current_x,
+                                y=current_y,
+                            )
                         )
+                        current_x += self._get_glyph_width(ord(character))
+                        current_delay += delay_step
+                current_x = 0
+                current_y += self.line_factor * self.line_height
+
+            width = self._get_width() + widest_line_number
+            if width > max_width:
+                max_width = width
+            height = self.line_height * self.line_factor * len(area.lines)
+
+        current_y = 0
+        for area in self.areas:
+            height = self.line_height * self.line_factor * len(area.lines)
+            if area.background:
+                body.insert(
+                    0,
+                    create_path(
+                        f'M0 {current_y}h{max_width}v{height}h{-max_width}z',
+                        fill=colors.background.get_value(self.color_scheme),
+                        stroke_width=0,
                     )
-                    current_x += self._get_glyph_width(ord(character))
-                    current_delay += delay_step
-            current_x = 0
-            current_y += self.line_factor * self.line_height
-
-        width = self._get_width() + widest_line_number
-        height = self._get_height()
-
-        if self.background:
-            body.insert(
-                0,
-                create_path(
-                    f'M0 0h{width}v{height}h{-width}z',
-                    fill=colors.background.get_value(self.color_scheme),
-                    stroke_width=0,
                 )
-            )
+            current_y += height
 
-        return create_svg(body, width=width, height=height)
+        return create_svg(body, width=width, height=self._get_height())
