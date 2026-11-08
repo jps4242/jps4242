@@ -3,12 +3,6 @@ from fontTools.pens.svgPathPen import SVGPathPen
 from fontTools.pens.transformPen import TransformPen
 from fontTools.pens.boundsPen import BoundsPen
 
-from .svg import (
-    create_svg,
-    create_path,
-    SVGNode,
-)
-
 class FontConverter:
     """
     An SVG converter for fonts.
@@ -24,38 +18,18 @@ class FontConverter:
         self,
         character: int,
         height: int,
-        *,
-        root_svg: bool = True,
-        x: int | float | None = None,
-        y: int | float | None = None,
-        color: str | None = None,
-        visibility_delay: int | float = 0,
-    ) -> SVGNode:
+    ) -> str:
         """
         Converts a character to an SVG using the font.
 
-        :character: The character.
+        :param character: The character.
         :type character: int
-        :height: The height of the glyph. The width will be set according to
-                 the height.
+        :param height: The height of the glyph. The width will be set according
+                       to the height.
         :type height: int
-        :param root_svg: Indicates whether it is the root SVG. If ``True``, a
-                         root SVG node will be created.
-        :type root_svg: bool
-        :param x: The x position of the SVG. It makes no sense to set a
-                  position on a root SVG.
-        :type x: int | float | None
-        :param y: The y position of the SVG. It makes no sense to set a
-                  position on a root SVG.
-        :type y: int | float | None
-        :param color: The color of the glyph.
-        :type color: str | None
-        :param visibility_delay: The delay before the path becomes visible (in
-                                 seconds).
-        :type visibility_delay: int | float
 
-        :return: The glyph as an SVG.
-        :rtype: SVGNode
+        :return: The SVG path commands for the glyph.
+        :rtype: str
         """
 
         glyph_set = self.font.getGlyphSet()
@@ -85,23 +59,4 @@ class FontConverter:
         )
         glyph.draw(transform_pen)
 
-        advance_width, _ = self.font['hmtx'][glyph_name]
-        width = advance_width * scale
-
-        return create_svg(
-            [
-                create_path(
-                    pen.getCommands(),
-                    stroke_color='none',
-                    fill=color if color is not None else None,
-                    visibility_delay=visibility_delay,
-                    fade_in_duration=0.1 if visibility_delay else None,
-                )
-            ],
-            root=root_svg,
-            width=width,
-            height=height,
-            view_box=f'0 0 {width} {height}',
-            x=x,
-            y=y,
-        )
+        return pen.getCommands()

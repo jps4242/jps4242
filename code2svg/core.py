@@ -2,7 +2,7 @@ from decimal import Decimal
 from fontTools.ttLib import TTFont
 
 from .fonts import FontConverter
-from .svg import SVGNode, create_path, create_svg
+from .svg import SVGNode, create_path, create_style, create_svg, create_use
 from .tokens import ColorScheme, colors, Token
 
 __all__ = ['SVGCode']
@@ -146,6 +146,81 @@ class SVGCode:
             for line in self.lines
         )
 
+    def create_character_map(self) -> tuple[dict[str, SVGNode], list[str]]:
+        """
+        Creates a mapping of the characters of the code and their glyph as SVG
+        paths.
+
+        :return: The mapping of the characters (keys) and their glyphs as SVG
+                 paths (values) and the list of characters with only one
+                 color.
+        :rtype: tuple[dict[str, SVGNode], list[str]]
+        """
+
+        # list instead of set to preserve order
+        characters_raw = []
+        for line in self.lines:
+            for token in line:
+                for character in token.text:
+                    character_with_color = (
+                        character,
+                        (
+                            token.color.get_value(self.color_scheme)
+                            if token.color is not None else None
+                        )
+                    )
+                    if character_with_color not in characters_raw:
+                        characters_raw.append(character_with_color)
+
+        # find combinations of characters and colors also for line numbers if
+        # enabled
+        if self.line_numbers:
+            # find all digits that are used
+            digits = '1234567890'
+            if len(self.lines) < 10:
+                digits = digits[:len(self.lines)]
+
+            line_numbers_color = colors.line_numbers.get_value(
+                self.color_scheme
+            )
+            for digit in digits:
+                digit_with_color = (digit, line_numbers_color)
+                if digit_with_color not in characters_raw:
+                    characters_raw.append(digit_with_color)
+
+        # all characters
+        characters = set(character for character, _ in characters_raw)
+        converter = FontConverter(self.font)
+        defs = {}
+        # list instead of set to preserve order
+        characters_with_unique_color = []
+
+        # generate the SVG paths and collect the characters with a unique
+        # color
+        for character in characters:
+            # find all colors this character has
+            character_colors = set(
+                color for char, color in characters_raw if char == character
+            )
+            color = None
+            # check whether the character has only one color
+            if len(character_colors) == 1:
+                if character not in characters_with_unique_color:
+                    characters_with_unique_color.append(character)
+                color = character_colors.pop()
+            character_ord = ord(character)
+            node = create_path(
+                converter.convert_character_to_svg(
+                    character_ord, self.line_height
+                ),
+                fill=color, # fill path with the color if the color is unique
+                stroke_color='none',
+            )
+            node.attributes['id'] = f'c{character_ord}'
+            defs[character] = node
+
+        return dict(sorted(defs.items())), characters_with_unique_color
+
     def render(self) -> SVGNode:
         """
         Renders the code and returns it as an SVG.
@@ -154,7 +229,21 @@ class SVGCode:
         :rtype: SVGNode
         """
 
-        body = []
+        character_map, characters_with_unique_color = (
+            self.create_character_map()
+        )
+
+        body = [
+            SVGNode('defs', {}, character_map.values()),
+        ]
+        if self.animation:
+            # add CSS for animations
+            body.append(
+                create_style(
+                    '@keyframes f{from{opacity:0}to{opacity:1}}.c{animation:f'
+                    ' 0.1s forwards;opacity:0}'
+                )
+            )
 
         current_x = 0
         current_y = 0
@@ -178,21 +267,46 @@ class SVGCode:
             if self.line_numbers:
                 line_number = str(line_index + 1).rjust(line_index_digits)
                 for line_digit in line_number:
-                    visibility_delay = 0
-                    if self.animate_line_numers:
-                        visibility_delay = current_delay
+                    character_ord = ord(line_digit)
+                    glyph_width = self._get_glyph_width(character_ord)
+
+                    use_attributes = {}
+                    if self.animate_line_numers and self.animation:
+                        # set attributes for line number animation
+                        use_attributes['class'] = 'c'
+                        use_attributes['style'] = (
+                            f'animation-delay:{current_delay}s'
+                        )
+                    if line_digit not in characters_with_unique_color:
+                        # set character color if it is not None
+                        color = colors.line_numbers.get_value(
+                            self.color_scheme
+                        )
+                        if color is not None:
+                            use_attributes['fill'] = (
+                                colors.line_numbers.get_value(
+                                    self.color_scheme
+                                )
+                            )
+
                     body.append(
-                        FontConverter(self.font).convert_character_to_svg(
-                            ord(line_digit),
-                            self.line_height,
-                            root_svg=False,
+                        create_svg(
+                            [
+                                # reference to the character path definition
+                                create_use(
+                                    f'#c{character_ord}',
+                                    use_attributes,
+                                )
+                            ],
+                            root=False,
+                            width=glyph_width,
+                            height=self.line_height,
+                            view_box=f'0 0 {glyph_width} {self.line_height}',
                             x=current_x,
                             y=current_y,
-                            color=colors.line_numbers.get_value(self.color_scheme),
-                            visibility_delay=visibility_delay
                         )
                     )
-                    current_x += self._get_glyph_width(ord(line_digit))
+                    current_x += self._get_glyph_width(character_ord)
                     if self.animate_line_numers:
                         current_delay += delay_step
                 space = 2 * self._get_glyph_width(32)
@@ -206,19 +320,43 @@ class SVGCode:
 
             for token in line:
                 for character in token.text:
+                    character_ord = ord(character)
+                    glyph_width = self._get_glyph_width(character_ord)
+
+                    use_attributes = {}
+                    if self.animation:
+                        # set attributes for animation
+                        use_attributes['class'] = 'c'
+                        use_attributes['style'] = (
+                            f'animation-delay:{current_delay}s'
+                        )
+                    if character not in characters_with_unique_color:
+                        # set character color if it is not None
+                        color = (
+                            token.color.get_value(self.color_scheme)
+                            if token.color is not None else None
+                        )
+                        if color is not None:
+                            use_attributes['fill'] = (
+                                token.color.get_value(self.color_scheme)
+                                if token.color is not None else None
+                            )
+
                     body.append(
-                        FontConverter(self.font).convert_character_to_svg(
-                            ord(character),
-                            self.line_height,
-                            root_svg=False,
+                        create_svg(
+                            [
+                                # reference to the character path definition
+                                create_use(
+                                    f'#c{character_ord}',
+                                    use_attributes,
+                                )
+                            ],
+                            root=False,
+                            width=glyph_width,
+                            height=self.line_height,
+                            view_box=f'0 0 {glyph_width} {self.line_height}',
                             x=current_x,
                             y=current_y,
-                            color=(
-                                token.color.get_value(self.color_scheme)
-                                if token.color is not None
-                                else None
-                            ),
-                            visibility_delay=current_delay,
                         )
                     )
                     current_x += self._get_glyph_width(ord(character))
