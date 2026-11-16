@@ -2,6 +2,11 @@ from dataclasses import dataclass
 from decimal import Decimal
 from fontTools.ttLib import TTFont
 
+from .animations import (
+    BezierCurve,
+    time_for_progress,
+    validate_timing_function,
+)
 from .fonts import FontConverter
 from .svg import SVGNode, create_path, create_style, create_svg, create_use
 from .tokens import Color, ColorScheme, colors, Token
@@ -12,6 +17,7 @@ __all__ = ['SVGCode']
 _DEFAULT_LINE_HEIGHT = 16
 _DEFAULT_LINE_FACTOR = 1.2
 _DEFAULT_ANIMATION_DURATION = Decimal(0.5)
+_DEFAULT_ANIMATION_TIMING_FUNCTION = (BezierCurve([(0, 0), (1, 1)]),)
 
 
 class SVGCodeArea:
@@ -46,6 +52,21 @@ class SVGCodeArea:
                             ``animation_delay`` is ignored if the animation is
                             disabled.
     :type animation_delay: Decimal | None
+    :param animation_timing_function: The Bézier curve or connected Bézier
+                                      curves which define the timing function
+                                      of the animation. The domain for the
+                                      curve(s) is the set from the point (0,
+                                      0) to the point (1, 1). The coordinate
+                                      of each point consists of the relative
+                                      time and the relative animation
+                                      progress. Both the animation progress
+                                      and the time must be monotonic. If the
+                                      animation is disabled,
+                                      ``animation_timing_function`` is
+                                      ignored. The default timing function is
+                                      linear.
+    :type animation_timing_function: BezierCurve | list[BezierCurve] |
+                                     tuple[BezierCurve, ...] | None
     :param padding_top: The padding which will be inserted at the bottom.
     :type padding_top: int | float
     :param padding_bottom: The padding which will be inserted at the bottom.
@@ -62,6 +83,9 @@ class SVGCodeArea:
         line_numbers: bool = True,
         animate_line_numers: bool = False,
         animation_delay: Decimal | None = None,
+        animation_timing_function: (
+            BezierCurve | list[BezierCurve] | tuple[BezierCurve, ...] | None
+        ) = None,
         padding_top: int | float = 0,
         padding_bottom: int | float = 0,
     ) -> None:
@@ -95,6 +119,14 @@ class SVGCodeArea:
             )
             if animation
             else None
+        )
+        self.animation_timing_function = (
+            (
+                validate_timing_function(animation_timing_function)
+                if animation_timing_function is not None
+                else _DEFAULT_ANIMATION_TIMING_FUNCTION
+            )
+            if animation else None
         )
         self.padding_top = padding_top
         self.padding_bottom = padding_bottom
@@ -317,17 +349,39 @@ class SVGCode:
             line_index_digits = len(str(len(area.lines)))
             widest_line_number = 0
 
-            characters_count = len(str(area))
-            if area.line_numbers:
+            # Count only characters which actually receive an animation. In
+            # particular, ``str(area)`` also contains line-separator characters
+            # which are not rendered as glyphs.
+            characters_count = sum(
+                len(token.text)
+                for line in area.lines
+                for token in line
+            )
+            if area.line_numbers and area.animate_line_numers:
                 characters_count += line_index_digits * len(area.lines)
             if area.animation:
-                delay_step = (
-                    area.animation_duration
-                    / (Decimal(characters_count) - 1)
-                )
+                animation_delays = []
+                for animation_index in range(characters_count):
+                    if characters_count <= 1:
+                        relative_time = Decimal(0)
+                    else:
+                        relative_progress = Decimal(animation_index) / Decimal(
+                            characters_count - 1
+                        )
+                        relative_time = time_for_progress(
+                            area.animation_timing_function,
+                            relative_progress,
+                        )
+                    animation_delays.append(
+                        area.animation_delay
+                        + area.animation_duration * relative_time
+                    )
+                animation_index = 0
+
+                def get_animation_delay(index: int) -> Decimal:
+                    return animation_delays[index]
             else:
-                delay_step = 0
-            current_delay = area.animation_delay
+                get_animation_delay = None
 
             for line_index, line in enumerate(area.lines):
                 if area.line_numbers:
@@ -341,8 +395,11 @@ class SVGCode:
                             # set attributes for line number animation
                             use_attributes['class'] = 'c'
                             use_attributes['style'] = (
-                                f'animation-delay:{current_delay}s'
+                                'animation-delay:'
+                                + str(get_animation_delay(animation_index))
+                                + 's'
                             )
+                            animation_index += 1
                         if line_digit not in characters_with_unique_color:
                             # set character color if it is not None
                             color = colors.line_numbers.get_value(
@@ -373,8 +430,6 @@ class SVGCode:
                             )
                         )
                         current_x += self._get_glyph_width(character_ord)
-                        if area.animate_line_numers:
-                            current_delay += delay_step
                     space = 2 * self._get_glyph_width(32)
                     current_x += space
                     line_number_width = sum(
@@ -394,8 +449,11 @@ class SVGCode:
                             # set attributes for animation
                             use_attributes['class'] = 'c'
                             use_attributes['style'] = (
-                                f'animation-delay:{current_delay}s'
+                                f'animation-delay:'
+                                + str(get_animation_delay(animation_index))
+                                + 's'
                             )
+                            animation_index += 1
                         if character not in characters_with_unique_color:
                             # set character color if it is not None
                             color = (
@@ -426,7 +484,6 @@ class SVGCode:
                             )
                         )
                         current_x += self._get_glyph_width(ord(character))
-                        current_delay += delay_step
                 current_x = 0
                 current_y += self.line_factor * self.line_height
 
