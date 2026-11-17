@@ -27,19 +27,63 @@ class SVGNode:
     attributes: dict[str, str]
     body: list[SVGNode | str] | None = None
 
-    def __str__(self) -> str:
-        str_repr = f'<{self.tag}'
-        for key, value in self.attributes.items():
-            str_repr += f' {key}="{value}"'
-        if self.body is None:
-            str_repr += '/>'
-        else:
-            str_repr += '>'
-            for node in self.body:
-                str_repr += str(node)
-            str_repr += f'</{self.tag}>'
-        return str_repr
+    def to_string(self, pretty: bool = False) -> str:
+        """
+        Converts the SVG node to a string.
 
+        :param pretty: Indicates whether line breaks should be used and
+                       whether the string should be formatted. Pretty output
+                       can be helpful during debugging, but should be avoided
+                       if the SVG is exported for sharing or for serving via
+                       a webserver, since a well-formatted SVG file is larger
+                       than a minified SVG file.
+        :type pretty: bool
+
+        :return: The SVG node as a string.
+        :rtype: str
+        """
+
+        def convert_svg_node_to_string(
+            node: SVGNode,
+            level: int = 0,
+        ) -> str:
+            str_repr = level * ('    ' if pretty else '')
+            str_repr += f'<{node.tag}'
+            for key, value in node.attributes.items():
+                str_repr += f' {key}="{value}"'
+            if node.body is None:
+                if pretty:
+                    str_repr += ' '
+                str_repr += '/>'
+                if pretty:
+                    str_repr += '\n'
+            else:
+                str_repr += '>'
+                if pretty:
+                    str_repr += '\n'
+                for element in node.body:
+                    if pretty:
+                        if isinstance(element, type(self)):
+                            str_repr += convert_svg_node_to_string(element, level + 1)
+                        else:
+                            node_str_repr = ''
+                            lines = (str(element).split('\n'))
+                            for line in lines:
+                                node_str_repr += (level + 1) * '    '
+                                node_str_repr += line
+                            str_repr += node_str_repr.strip('\n') + '\n'
+                    else:
+                        str_repr += str(element)
+                str_repr += level * ('    ' if pretty else '')
+                str_repr += f'</{node.tag}>'
+                if pretty:
+                    str_repr += '\n'
+            return str_repr
+
+        return convert_svg_node_to_string(self)
+
+    def __str__(self) -> str:
+        return self.to_string()
 
 def create_svg(
     body: list[SVGNode],
