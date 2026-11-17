@@ -14,6 +14,7 @@ _DEFAULT_LINE_HEIGHT = 16
 _DEFAULT_LINE_FACTOR = 1.2
 _DEFAULT_ANIMATION_DURATION = Decimal(0.5)
 _DEFAULT_ANIMATION_TIMING_FUNCTION = (BezierCurve([(0, 0), (1, 1)]),)
+_DEFAULT_ANIMATION_FADE_IN_DURATION = Decimal('0.1')
 
 
 class SVGCodeArea:
@@ -63,6 +64,12 @@ class SVGCodeArea:
                                       linear.
     :type animation_timing_function: BezierCurve | list[BezierCurve] |
                                      tuple[BezierCurve, ...] | None
+    :type animation_fade_in_duration: The time it takes for a character to
+                                      fade in. If the animation is disabled,
+                                      ``animation_fade_in_duration`` is
+                                      ignored. The default duration is 0.1
+                                      seconds.
+    :param animation_fade_in_duration: int | Decimal | None
     :param padding_top: The padding which will be inserted at the bottom.
     :type padding_top: int | float
     :param padding_bottom: The padding which will be inserted at the bottom.
@@ -82,6 +89,7 @@ class SVGCodeArea:
         animation_timing_function: (
             BezierCurve | list[BezierCurve] | tuple[BezierCurve, ...] | None
         ) = None,
+        animation_fade_in_duration: int | Decimal | None = None,
         padding_top: int | float = 0,
         padding_bottom: int | float = 0,
     ) -> None:
@@ -124,8 +132,43 @@ class SVGCodeArea:
             )
             if animation else None
         )
+        self.animation_fade_in_duration = (
+            (
+                animation_fade_in_duration
+                if animation_fade_in_duration is not None
+                else _DEFAULT_ANIMATION_FADE_IN_DURATION
+            )
+            if animation
+            else None
+        )
         self.padding_top = padding_top
         self.padding_bottom = padding_bottom
+
+    def is_animated(self) -> bool:
+        """
+        Checks whether there is an animation in the code area. An area is
+        animated if it contains characters and/or animated line numbers.
+
+        :return: Whether the code area is animated.
+        :rtype: bool
+        """
+
+        if not self.animation:
+            return False
+
+        if self.line_numbers and self.lines and self.animate_line_numers:
+            # line numbers are enabled and there is at least one line (even if
+            # it is empty)
+            return True
+
+        for line in self.lines:
+            for token in line:
+                if token.text:
+                    # a token contains text
+                    return True
+
+        # there are no animated line numbers and no token contains text
+        return False
 
     def __str__(self) -> int:
         return '\n'.join(
@@ -326,13 +369,69 @@ class SVGCode:
             SVGNode('defs', {}, character_map.values()),
         ]
         if any(area.animation for area in self.areas):
-            # add CSS for animations
-            body.append(
-                create_style(
-                    '@keyframes f{from{opacity:0}to{opacity:1}}.c{animation:f'
-                    ' 0.1s forwards;opacity:0}'
-                )
-            )
+            animation_fade_in_durations = list(set(
+                area.animation_fade_in_duration
+                for area in self.areas
+                if area.animation and area.is_animated()
+            ))
+            if animation_fade_in_durations:
+                css = '@keyframes f{from{opacity:0}to{opacity:1}}'
+                animation_fade_in_durations.sort()
+                unique_animation_fade_in_duration = len(
+                    animation_fade_in_durations
+                ) == 1
+                if unique_animation_fade_in_duration:
+                    css += (
+                        f'.c{{animation:f {animation_fade_in_durations[0]}s forwa'
+                        'rds;opacity:0}'
+                    )
+                    classes = None
+                else:
+                    css += '.c{animation:f var(--d) forwards;opacity:0}'
+                    available_class_characters_first = (
+                        'abdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+                    )
+                    available_class_characters = (
+                        available_class_characters_first + '0123456789c'
+                    )
+
+                    def get_class_name(value: int) -> str:
+                        if value < 0:
+                            raise ValueError('value must not be negative')
+
+                        if value == 0:
+                            return available_class_characters[0]
+
+                        result = ''
+
+                        shift = 0
+                        available_characters = available_class_characters_first
+
+                        while value:
+                            result += available_characters[
+                                value % len(available_characters) - shift
+                            ]
+                            value //= len(available_characters)
+                            if not shift:
+                                shift = 1
+                                available_characters = available_class_characters
+
+                        return result
+
+                    classes = {}
+
+                    duration_index = 0
+                    for duration in animation_fade_in_durations:
+                        if duration:
+                            class_name = get_class_name(duration_index)
+                            classes[duration] = class_name
+                            css += f'.{class_name}{{--d:{duration}s}}'
+                            duration_index += 1
+                        else:
+                            classes[duration] = None
+
+                # add CSS for animations
+                body.append(create_style(css))
 
         current_x = 0
         current_y = 0
@@ -379,6 +478,16 @@ class SVGCode:
             else:
                 get_animation_delay = None
 
+            def get_class_name_for_fade_in_duration(duration: Decimal) -> str:
+                if classes is not None:
+                    fade_in_duration_class = classes[duration]
+                    if (
+                        not unique_animation_fade_in_duration
+                        and fade_in_duration_class is not None
+                    ):
+                        return f' {fade_in_duration_class}'
+                return ''
+
             for line_index, line in enumerate(area.lines):
                 if area.line_numbers:
                     line_number = str(line_index + 1).rjust(line_index_digits)
@@ -389,7 +498,12 @@ class SVGCode:
                         use_attributes = {}
                         if area.animate_line_numers and area.animation:
                             # set attributes for line number animation
-                            use_attributes['class'] = 'c'
+                            use_attributes['class'] = (
+                                'c'
+                                + get_class_name_for_fade_in_duration(
+                                    area.animation_fade_in_duration
+                                )
+                            )
                             use_attributes['style'] = (
                                 f'animation-delay:{get_animation_delay(animation_index)}s'
                             )
@@ -441,7 +555,12 @@ class SVGCode:
                         use_attributes = {}
                         if area.animation:
                             # set attributes for animation
-                            use_attributes['class'] = 'c'
+                            use_attributes['class'] = (
+                                'c'
+                                + get_class_name_for_fade_in_duration(
+                                    area.animation_fade_in_duration
+                                )
+                            )
                             use_attributes['style'] = (
                                 f'animation-delay:{get_animation_delay(animation_index)}s'
                             )
