@@ -438,6 +438,7 @@ class SVGCode:
 
         max_width = 0
 
+        width = 0
         for area in self.areas:
             current_y += area.padding_top
 
