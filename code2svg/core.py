@@ -447,9 +447,8 @@ class SVGCode:
         current_x = 0
         current_y = 0
 
-        max_width = 0
+        widths = []
 
-        width = 0
         for area in self.areas:
             current_y += area.padding_top
 
@@ -604,9 +603,7 @@ class SVGCode:
                 current_x = 0
                 current_y += self.line_factor * self.line_height
 
-            width = self._get_width() + widest_line_number
-            if width > max_width:
-                max_width = width
+            widths.append(self._get_width() + widest_line_number)
             height = (
                 self.line_height
                 * self.line_factor
@@ -614,6 +611,8 @@ class SVGCode:
                 + area.padding_bottom
             )
             current_y += area.padding_bottom
+
+        width = max(widths, default=0)
 
         current_y = 0
         for area in self.areas:
@@ -628,7 +627,7 @@ class SVGCode:
                 body.insert(
                     0,
                     create_path(
-                        f'M0 {current_y}h{max_width}v{height}h{-max_width}z',
+                        f'M0 {current_y}h{width}v{height}h{-width}z',
                         fill=area.background.get_value(self.color_scheme),
                         stroke_width=0,
                     )
