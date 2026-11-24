@@ -21,11 +21,17 @@ class SVGNode:
     :param body: The body of the node as a list of other SVG nodes.
                  If it is ``None``, the node will have no body.
     :type body: list[SVGNode | str] | None
+    :param format: Indicates whether the node may be formatted when converting
+                   the node to a string using pretty output. Setting it to
+                   ``False`` does not make sense if the node body does not
+                   contain text nodes.
+    :type format: bool
     """
 
     tag: str
     attributes: dict[str, str]
     body: list[SVGNode | str] | None = None
+    format: bool = True
 
     def to_string(self, pretty: bool = False) -> str:
         """
@@ -59,10 +65,10 @@ class SVGNode:
                     str_repr += '\n'
             else:
                 str_repr += '>'
-                if pretty:
+                if pretty and node.format:
                     str_repr += '\n'
                 for element in node.body:
-                    if pretty:
+                    if pretty and node.format:
                         if isinstance(element, type(self)):
                             str_repr += convert_svg_node_to_string(element, level + 1)
                         else:
@@ -74,7 +80,7 @@ class SVGNode:
                             str_repr += node_str_repr.strip('\n') + '\n'
                     else:
                         str_repr += str(element)
-                str_repr += level * ('    ' if pretty else '')
+                str_repr += level * ('    ' if pretty and node.format else '')
                 str_repr += f'</{node.tag}>'
                 if pretty:
                     str_repr += '\n'
