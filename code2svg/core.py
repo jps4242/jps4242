@@ -8,7 +8,14 @@ from .animations import (
     validate_timing_function,
 )
 from .fonts import FontConverter
-from .svg import SVGNode, create_path, create_style, create_svg, create_use
+from .svg import (
+    SVGNode,
+    create_path,
+    create_style,
+    create_svg,
+    create_text,
+    create_use,
+)
 from .tokens import Color, ColorScheme, colors, Token
 
 __all__ = ['SVGCode']
@@ -201,6 +208,12 @@ class SVGCode:
     :type line_factor: int | float
     :param color_scheme: The color scheme for the token colors.
     :type color_scheme: ColorScheme
+    :param accessibility: Indicates whether machine-readable SVG text elements
+                          should be added to improve the accessibility of the
+                          SVG, for example, for screen readers. These elements
+                          are invisible. By default, no text elements are
+                          added.
+    :type accessibility: bool
     """
 
     def __init__(
@@ -211,12 +224,14 @@ class SVGCode:
         line_height: int | float = _DEFAULT_LINE_HEIGHT,
         line_factor: int | float = _DEFAULT_LINE_FACTOR,
         color_scheme: ColorScheme = 'light',
+        accessibility: bool = False,
     ) -> None:
         self.areas = areas
         self.font = font
         self.line_height = line_height
         self.line_factor = line_factor
         self.color_scheme = color_scheme
+        self.accessibility = accessibility
 
     def _get_glyph_width(self, character: int) -> float:
         """
@@ -601,6 +616,21 @@ class SVGCode:
                         )
                         current_x += self._get_glyph_width(ord(character))
                 current_x = 0
+                if self.accessibility:
+                    text = ''.join(token.text for token in line)
+                    text_element = create_text(
+                        text,
+                        x=current_x + widest_line_number,
+                        y=current_y + (self.line_height * self.line_factor) / 2,
+                    )
+                    if text.strip() != text:
+                        text_element.attributes['xml:space'] = 'preserve'
+                        text_element.format = False
+                    text_element.attributes['opacity'] = 0
+                    # compatibility with renderers which do not support fill
+                    # to ensure invisibility of the text element
+                    text_element.attributes['fill-opacity'] = 0
+                    body.append(text_element)
                 current_y += self.line_factor * self.line_height
 
             widths.append(self._get_width() + widest_line_number)

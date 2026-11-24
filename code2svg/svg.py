@@ -6,6 +6,7 @@ __all__ = [
     'create_path',
     'create_use',
     'create_style',
+    'create_text',
 ]
 
 
@@ -311,3 +312,33 @@ def create_style(css: str) -> SVGNode:
     """
 
     return SVGNode('style', {}, [css])
+
+
+def create_text(
+    text: str,
+    *,
+    x: int | float | None = None,
+    y: int | float | None = None,
+) -> SVGNode:
+    """
+    Creates an SVG text element (``<text>``).
+
+    :param text: The text.
+    :type text: str
+    :param x: The x position of the text (``x`` attribute). If ``None``, no x
+              position will be set.
+    :type x: int | float | None
+    :param y: The y position of the text (``y`` attribute). If ``None``, no y
+              position will be set.
+    :type y: int | float | None
+
+    :return: The SVG element.
+    :rtype: SVGNode
+    """
+
+    attributes = {}
+    if x is not None:
+        attributes['x'] = x
+    if y is not None:
+        attributes['y'] = y
+    return SVGNode('text', attributes, [text])
