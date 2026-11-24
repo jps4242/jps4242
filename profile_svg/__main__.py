@@ -1,9 +1,9 @@
 from decimal import Decimal
 from fontTools.ttLib import TTFont
 
-from .cli import parse_config
-from .core import SVGCode, SVGCodeArea
-from .tokens import (
+from .code2svg.cli import parse_config
+from .code2svg.core import SVGCode, SVGCodeArea
+from .code2svg.tokens import (
     colors,
     js,
     punctuation,
