@@ -1,47 +1,10 @@
 # Hi, I'm jps4242 👋
 
-`developer.js`:
-```javascript
-class Developer {
-    constructor(name, info) {
-        this.name = name;
-        this.info = info;
-    }
-
-    sayHello() {
-        console.log(
-            `Hi 👋, I'm ${this.name}, a passionate full-stack developer and sysadmin!`
-        );
-    }
-}
-
-const jps4242 = new Developer('jps4242', {
-    languages: [
-        'Python', 'JavaScript', 'TypeScript', 'HTML', 'CSS', 'SQL'
-    ],
-    interests: [
-        'Building useful software',
-        'Learning new technologies',
-        'Solving interesting problems'
-    ],
-    technologies: {
-        frontend: ['Vue.js', 'Vite'],
-        backend: ['FastAPI', 'Node.js'],
-        data: {
-            databases: ['PostgreSQL', 'Redis', 'SQLite'],
-            storage: ['MinIO']
-        },
-        tools: [
-            'Linux', 'Docker', 'Podman', 'VS Code', 'GitHub', 'Gitea', 'Git'
-        ],
-    }
-});
-jps4242.sayHello();
-```
+![Introduction of jps4242](introduction.svg)
 
 ```bash
 hello@jps4242:~ $ node ./developer.js
-Hi 👋, I'm jps4242, a passionate full-stack developer and sysadmin!
+Hi, I'm jps4242, a passionate full-stack developer and sysadmin!
 ```
 
 ## Projects I maintain
