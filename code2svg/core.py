@@ -617,15 +617,14 @@ class SVGCode:
                         current_x += self._get_glyph_width(ord(character))
                 current_x = 0
                 if self.accessibility:
-                    text = ''.join(token.text for token in line)
+                    text = ''.join(token.text for token in line) + '\n'
                     text_element = create_text(
                         text,
                         x=current_x + widest_line_number,
                         y=current_y + (self.line_height * self.line_factor) / 2,
                     )
-                    if text.strip() != text:
-                        text_element.attributes['xml:space'] = 'preserve'
-                        text_element.format = False
+                    text_element.attributes['xml:space'] = 'preserve'
+                    text_element.format = False
                     text_element.attributes['opacity'] = 0
                     # compatibility with renderers which do not support fill
                     # to ensure invisibility of the text element

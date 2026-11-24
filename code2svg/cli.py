@@ -17,11 +17,15 @@ class Config:
     :param pretty_output: Indicates whether the output SVG should be
                           formatted.
     :type pretty_output: bool
+    :param accessibility: Indicates whether the text in the SVG should be
+                          accessible to tools such as screen readers.
+    :type accessibility: bool
     """
 
     output_file: pathlib.Path
     font_file: pathlib.Path
     pretty_output: bool
+    accessibility: bool = False
 
 
 def _existing_file(value: str) -> pathlib.Path:
@@ -102,10 +106,19 @@ def parse_config() -> Config:
             'e trailing slashes'
         ),
     )
+    argument_parser.add_argument(
+        '-a',
+        '--accessibility',
+        action='store_true',
+        help=(
+            'Make text in the SVG accessible to tools such as screen readers'
+        ),
+    )
     args = argument_parser.parse_args()
 
     return Config(
         output_file=args.output,
         font_file=args.font_file,
         pretty_output=args.pretty,
+        accessibility=args.accessibility
     )

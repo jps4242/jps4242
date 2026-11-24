@@ -370,6 +370,7 @@ def main():
         color_scheme='dark',
         line_height=17,
         line_factor=1.45,
+        accessibility=config.accessibility,
     ).render()
 
     config.output_file.write_text(svg.to_string(config.pretty_output))
