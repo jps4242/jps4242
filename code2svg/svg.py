@@ -56,6 +56,10 @@ class SVGNode:
             str_repr = level * ('    ' if pretty else '')
             str_repr += f'<{node.tag}'
             for key, value in node.attributes.items():
+                value = str(value) \
+                    .replace('&', '&amp;') \
+                    .replace('<', '&lt;') \
+                    .replace('"', '&quot;')
                 str_repr += f' {key}="{value}"'
             if node.body is None:
                 if pretty:
@@ -68,6 +72,11 @@ class SVGNode:
                 if pretty and node.format:
                     str_repr += '\n'
                 for element in node.body:
+                    if not isinstance(element, type(self)):
+                        element = element \
+                            .replace('&', '&amp;') \
+                            .replace('<', '&lt;') \
+                            .replace('>', '&gt;')
                     if pretty and node.format:
                         if isinstance(element, type(self)):
                             str_repr += convert_svg_node_to_string(element, level + 1)
