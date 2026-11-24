@@ -26,6 +26,7 @@ _DEFAULT_LINE_FACTOR = 1.2
 _DEFAULT_ANIMATION_DURATION = Decimal(0.5)
 _DEFAULT_ANIMATION_TIMING_FUNCTION = (BezierCurve([(0, 0), (1, 1)]),)
 _DEFAULT_ANIMATION_FADE_IN_DURATION = Decimal('0.1')
+_NUMBER_RESOLUTION = 10000
 
 
 class SVGCodeArea:
@@ -459,6 +460,11 @@ class SVGCode:
         else:
             get_class_name_for_fade_in_duration = None
 
+        def compress_number(value: float) -> float:
+            return round(
+                value, len(str(self.line_height / _NUMBER_RESOLUTION).split('.')[1])
+            )
+
         current_x = 0
         current_y = 0
 
@@ -548,11 +554,16 @@ class SVGCode:
                                     )
                                 ],
                                 root=False,
-                                width=glyph_width,
+                                width=compress_number(glyph_width),
                                 height=self.line_height,
-                                view_box=f'0 0 {glyph_width} {self.line_height}',
-                                x=current_x,
-                                y=current_y,
+                                view_box=(
+                                    '0 0 '
+                                    + str(compress_number(glyph_width))
+                                    + ' '
+                                    + str(compress_number(self.line_height))
+                                ),
+                                x=compress_number(current_x),
+                                y=compress_number(current_y),
                             )
                         )
                         current_x += self._get_glyph_width(character_ord)
@@ -607,11 +618,16 @@ class SVGCode:
                                     )
                                 ],
                                 root=False,
-                                width=glyph_width,
+                                width=compress_number(glyph_width),
                                 height=self.line_height,
-                                view_box=f'0 0 {glyph_width} {self.line_height}',
-                                x=current_x,
-                                y=current_y,
+                                view_box=(
+                                    '0 0 '
+                                    + str(compress_number(glyph_width))
+                                    + ' '
+                                    + str(compress_number(self.line_height))
+                                ),
+                                x=compress_number(current_x),
+                                y=compress_number(current_y),
                             )
                         )
                         current_x += self._get_glyph_width(ord(character))
