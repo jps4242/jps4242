@@ -274,7 +274,7 @@ def create_path(
 
 def create_use(
     definition: str,
-    attributes: dict[str, str] = {},
+    attributes: dict[str, str] | None = None,
     body: list[SVGNode] | None = None,
 ) -> SVGNode:
     """
@@ -286,7 +286,7 @@ def create_use(
     :param attributes: The attributes that will be set on the ``<use>``
                        element. Attributes set here override the corresponding
                        attributes of the reused element.
-    :type attributes: dict[str, str]
+    :type attributes: dict[str, str] | None
     :param body: The body of the element. If ``None``, the ``<use>`` element
                  not have a body.
     :type body: list[SVGNode] | None
@@ -294,6 +294,9 @@ def create_use(
     :return: The ``<use>`` SVG element.
     :rtype: SVGNode
     """
+
+    if attributes is None:
+        attributes = {}
 
     attributes['href'] = definition
 
