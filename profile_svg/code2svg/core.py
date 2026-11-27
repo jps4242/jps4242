@@ -40,6 +40,8 @@ class SVGCodeArea:
                        ``False``, no background will be added. This is the
                        default value. It can also be a custom color.
     :type background: bool | Color
+    :param line_numbers: Indicates whether line numbers will be displayed.
+    :type line_numbers: bool
     :param animation: Indicates whether the code will be animated. If it is
                       animated, each character appears with a delay which is
                       increased after each character. Each character fades in
@@ -50,8 +52,6 @@ class SVGCodeArea:
                                the animation is disabled. Default is 0.5
                                seconds.
     :type animation_duration: int | Decimal | None
-    :param line_numbers: Indicates whether line numbers will be displayed.
-    :type line_numbers: bool
     :param animate_line_numbers: Indicates whether the line numbers will be
                                  part of the animation.
                                  ``animate_line_numbers`` is ignored if the
@@ -93,9 +93,9 @@ class SVGCodeArea:
         lines: list[list[Token]],
         *,
         background: bool | Color = False,
+        line_numbers: bool = True,
         animation: bool = False,
         animation_duration: int | Decimal | None = None,
-        line_numbers: bool = True,
         animate_line_numbers: bool = False,
         animation_delay: Decimal | None = None,
         animation_timing_function: (
@@ -115,6 +115,7 @@ class SVGCodeArea:
                 else None
             )
         )
+        self.line_numbers = line_numbers
         self.animation = animation
         self.animation_duration = (
             (
@@ -125,7 +126,6 @@ class SVGCodeArea:
             if animation
             else None
         )
-        self.line_numbers = line_numbers
         self.animate_line_numbers = (
             animate_line_numbers
             if animation and line_numbers
