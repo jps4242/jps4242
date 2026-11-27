@@ -96,7 +96,7 @@ class SVGCodeArea:
         animation: bool = False,
         animation_duration: int | Decimal | None = None,
         line_numbers: bool = True,
-        animate_line_numers: bool = False,
+        animate_line_numbers: bool = False,
         animation_delay: Decimal | None = None,
         animation_timing_function: (
             BezierCurve | list[BezierCurve] | tuple[BezierCurve, ...] | None
@@ -126,7 +126,7 @@ class SVGCodeArea:
             else None
         )
         self.line_numbers = line_numbers
-        self.animate_line_numers = animate_line_numers
+        self.animate_line_numbers = animate_line_numbers
         self.animation_delay = (
             (
                 animation_delay
@@ -168,7 +168,7 @@ class SVGCodeArea:
         if not self.animation:
             return False
 
-        if self.line_numbers and self.lines and self.animate_line_numers:
+        if self.line_numbers and self.lines and self.animate_line_numbers:
             # line numbers are enabled and there is at least one line (even if
             # it is empty)
             return True
@@ -484,7 +484,7 @@ class SVGCode:
                 for line in area.lines
                 for token in line
             )
-            if area.line_numbers and area.animate_line_numers:
+            if area.line_numbers and area.animate_line_numbers:
                 characters_count += line_index_digits * len(area.lines)
             if area.animation:
                 animation_delays = []
@@ -518,7 +518,7 @@ class SVGCode:
                         glyph_width = self._get_glyph_width(character_ord)
 
                         use_attributes = {}
-                        if area.animate_line_numers and area.animation:
+                        if area.animate_line_numbers and area.animation:
                             # set attributes for line number animation
                             use_attributes['class'] = (
                                 'c'
