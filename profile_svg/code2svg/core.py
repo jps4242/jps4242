@@ -182,7 +182,7 @@ class SVGCodeArea:
         # there are no animated line numbers and no token contains text
         return False
 
-    def __str__(self) -> int:
+    def __str__(self) -> str:
         return '\n'.join(
             ''.join(
                 token.text
