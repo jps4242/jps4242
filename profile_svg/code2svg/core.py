@@ -126,7 +126,11 @@ class SVGCodeArea:
             else None
         )
         self.line_numbers = line_numbers
-        self.animate_line_numbers = animate_line_numbers
+        self.animate_line_numbers = (
+            animate_line_numbers
+            if animation and line_numbers
+            else None
+        )
         self.animation_delay = (
             (
                 animation_delay
